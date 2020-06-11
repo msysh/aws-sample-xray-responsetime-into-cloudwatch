@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Globals:
+  Function:
+    Timeout: 45
+Parameters:
+  XRayGroupName:
+    Description: X-Ray Group Name
+    Type: String
+    Default: "PleaseSpecifyXRayGroupName"
+Resources:
+  MyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: function
+      Handler: main/app.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt MyRole.Arn
+      Environment: 
+        Variables:
+          XRAY_GROUP_NAME: !Ref XRayGroupName
+          CW_METRICS_NAMESPACE: "X-Ray/Custome Metrics"
+          LOG_LEVEL: "WARN"
+          SAMPLIG_INTERVAL: "60"
+      Events:
+        MyEvent:
+          Type: Schedule
+          Properties:
+            Schedule: cron(*/1 * * * ? *)
+  MyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Principal:
+            Service: lambda.amazonaws.com
+      Policies:
+      -
+        PolicyName: root
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          -
+            Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - xray:GetServiceGraph
+            - cloudwatch:PutMetricData
+            Resource: '*'
